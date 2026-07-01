@@ -1,0 +1,14 @@
+# Java compiled files
+*.class
+
+# Maven build output
+target/
+
+# IDE / editor
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
