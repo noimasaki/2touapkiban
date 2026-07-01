@@ -50,3 +50,10 @@ javac Hello.java
 ```bash
 java Hello
 ```
+
+## SpringBootでHello Worldしてみる
+1. VScodeの拡張機能の`SpringInitializer`をCodespaceに追加し、SpringBootプロジェクトを作成（`./hellospringbootweb`）
+2. Controllerとhtmlテンプレートを作成して、起動クラスを実行する。
+3. 無事に起動すると、ポート転送されるので、ボタン押下すれば、ブラウザからCodespace上で実行されたAPサーバにアクセスできる。
+
+![alt text](./image/1.png)
