@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: demo
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/appdb
+    username: appuser
+    password: apppass
+    driver-class-name: org.postgresql.Driver
+
+mybatis:
+  configration:
+    map-underscore-to-camel-case: true
