@@ -1,6 +1,7 @@
 package com.example.demo.domain;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,10 @@ public class TodoService {
 
     public List<Todo> findAll() {
         return mapper.findAll();
+    }
+
+    public Optional<Todo> findById(Long id) {
+        return mapper.findById(id);
     }
 
     @Transactional
