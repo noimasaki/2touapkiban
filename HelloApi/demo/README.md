@@ -38,3 +38,14 @@ psql -h localhost -p 5432 -U appuser -d appdb
 # DB内の情報確認（001_create_todo_table.sql のレコードが見れること）
 SELECT id , title , done FROM todo ORDER BY id;
 ```
+
+
+## springboot起動コマンド
+
+```bash
+# コンパイル
+./mvnw clean compile
+
+# 実行
+./mvnw spring-boot:run
+```
