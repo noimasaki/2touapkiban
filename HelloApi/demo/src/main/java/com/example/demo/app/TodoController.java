@@ -39,4 +39,14 @@ public class TodoController{
     }
 
     public record CreateTodoRequest(String title) {}
+
+
+    // 指定IDのtodoのdoneを更新
+    @PostMapping("/{id}/done")
+    public int updateDone(@PathVariable("id") Long id, @RequestBody UpdateDoneRequest req) {
+        return service.updateDone(id, req.done);
+    }
+
+    public record UpdateDoneRequest(Boolean done) {}
+
 }

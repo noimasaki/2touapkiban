@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Update;
 
 import com.example.demo.domain.Todo;
 
@@ -22,4 +23,7 @@ public interface TodoMapper {
     @Insert("INSERT INTO todo(title, done) VALUES(#{title}, false)")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(Todo todo);
+
+    @Update("UPDATE todo SET done = #{done} WHERE id = #{id}")
+    int update(Long id, Boolean done);
 }

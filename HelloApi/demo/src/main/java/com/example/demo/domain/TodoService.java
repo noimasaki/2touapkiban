@@ -32,4 +32,10 @@ public class TodoService {
         mapper.insert(todo);
         return todo;
     }
+
+    @Transactional
+    public int updateDone(Long id, boolean done) {
+        int updateCount = mapper.update(id, done);
+        return updateCount;
+    }
 }
