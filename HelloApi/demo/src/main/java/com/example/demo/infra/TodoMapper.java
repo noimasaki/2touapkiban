@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.Optional;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Insert;
 
 import com.example.demo.domain.Todo;
 
@@ -16,4 +18,8 @@ public interface TodoMapper {
 
     @Select("SELECT id, title, done FROM todo WHERE id = #{id}")
     Optional<Todo> findById(Long id);
+
+    @Insert("INSERT INTO todo(title, done) VALUES(#{title}, false)")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    void insert(Todo todo);
 }
