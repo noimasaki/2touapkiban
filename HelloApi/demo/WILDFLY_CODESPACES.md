@@ -60,6 +60,24 @@ public class DemoApplication extends SpringBootServletInitializer {
 
 これはSpring Boot公式のTraditional Deployment（従来型WARデプロイ）の構成に沿った変更である。
 
+カンペと同じJNDI名を参照するため、`src/main/resources/application.yml`の`spring.datasource`を次の内容に置き換える。既存の`url`、`username`、`password`、`driver-class-name`は削除する。
+
+```yaml
+spring:
+  application:
+    name: demo
+
+  datasource:
+    jndi-name: java:/jdbc/todoDS
+
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+```
+
+DBのURLやユーザー情報はアプリに持たせず、WildFly側で管理する。
+
 ## 2. Docker ComposeにWildFlyを追加する
 
 `docker-compose.yaml`を次の内容にする。
@@ -92,8 +110,6 @@ services:
     ports:
       - "8080:8080"
       - "9990:9990"
-    environment:
-      SPRING_DATASOURCE_JNDI_NAME: java:jboss/datasources/AppDS
     volumes:
       - ./target/jdbc-driver/postgresql.jar:/opt/jboss/wildfly/standalone/deployments/postgresql.jar:ro
     depends_on:
@@ -105,7 +121,7 @@ services:
 
 - 管理画面用のポート`9990`を公開し、管理ユーザーを起動時に作成する。
 - PostgreSQL JDBCドライバをWildFlyへデプロイする。
-- Spring BootはURL・ユーザー名・パスワードを直接使わず、WildFly管理のJNDIデータソース`java:jboss/datasources/AppDS`を参照する。
+- Spring BootはURL・ユーザー名・パスワードを直接使わず、WildFly管理のJNDIデータソース`java:/jdbc/todoDS`を参照する。
 
 ## 3. PostgreSQLを起動してDDLを流す
 
@@ -132,6 +148,8 @@ docker compose exec postgres \
 ## 4. JDBCドライバを用意してWildFlyを起動する
 
 ```bash
+./mvnw clean package
+test -f target/demo.war
 ./mvnw dependency:copy-dependencies \
   -DincludeArtifactIds=postgresql \
   -DoutputDirectory=target/jdbc-driver \
@@ -167,23 +185,22 @@ docker compose logs wildfly
 
 | 項目 | 値 |
 |---|---|
-| Name | `AppDS` |
-| JNDI Name | `java:jboss/datasources/AppDS` |
+| Name | `todoDS` |
+| JNDI Name | `java:/jdbc/todoDS` |
 | Driver | デプロイ済みのPostgreSQLドライバ |
 | Connection URL | `jdbc:postgresql://postgres:5432/appdb` |
 | User Name | `appuser` |
 | Password | `apppass` |
 
-WildFlyコンテナから見たDBホスト名は`localhost`ではなく、Composeのサービス名`postgres`になる。
+カンペでは接続URLが`jdbc:postgresql://localhost:5432/appdb`になっているが、これはWildFlyとPostgreSQLを同じOS上で直接起動する場合の値。今回は別々のComposeコンテナなので、WildFlyコンテナから見たDBホスト名は`localhost`ではなく、Composeのサービス名`postgres`になる。
 
 設定画面の`Test Connection`を実行し、接続成功になることを確認してから保存・有効化する。
 
 ## 6. WARを作成してWildFlyへデプロイする
 
-`clean`を付けると`target/jdbc-driver/postgresql.jar`も削除されるため、ここでは`package`だけを実行する。
+手順4ですでに作成した`demo.war`をデプロイする。
 
 ```bash
-./mvnw package
 test -f target/demo.war
 docker compose cp target/demo.war \
   wildfly:/opt/jboss/wildfly/standalone/deployments/demo.war
