@@ -147,6 +147,8 @@ docker compose exec postgres \
 
 ## 4. JDBCドライバを用意してWildFlyを起動する
 
+テストを実行しない場合のコマンドは`./mvnw clean package -DskipTests`
+
 ```bash
 ./mvnw clean package
 test -f target/demo.war

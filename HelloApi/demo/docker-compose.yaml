@@ -7,3 +7,26 @@ services:
       POSTGRES_DB: appdb
       POSTGRES_USER: appuser
       POSTGRES_PASSWORD: apppass
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  wildfly:
+    image: quay.io/wildfly/wildfly:40.0.0.Final-jdk17
+    command: >
+      /bin/bash -c "if ! grep -q '^admin='
+      /opt/jboss/wildfly/standalone/configuration/mgmt-users.properties;
+      then /opt/jboss/wildfly/bin/add-user.sh
+      -u admin -p 'CodespaceAdmin_2026!' --silent; fi;
+      exec /opt/jboss/wildfly/bin/standalone.sh
+      -b 0.0.0.0 -bmanagement 0.0.0.0"
+    ports:
+      - "8080:8080"
+      - "9990:9990"
+    volumes:
+      - ./target/jdbc-driver/postgresql.jar:/opt/jboss/wildfly/standalone/deployments/postgresql.jar:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
