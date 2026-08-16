@@ -82,20 +82,30 @@ services:
 
   wildfly:
     image: quay.io/wildfly/wildfly:40.0.0.Final-jdk17
+    command: >
+      /bin/bash -c "if ! grep -q '^admin='
+      /opt/jboss/wildfly/standalone/configuration/mgmt-users.properties;
+      then /opt/jboss/wildfly/bin/add-user.sh
+      -u admin -p 'CodespaceAdmin_2026!' --silent; fi;
+      exec /opt/jboss/wildfly/bin/standalone.sh
+      -b 0.0.0.0 -bmanagement 0.0.0.0"
     ports:
       - "8080:8080"
+      - "9990:9990"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/appdb
-      SPRING_DATASOURCE_USERNAME: appuser
-      SPRING_DATASOURCE_PASSWORD: apppass
+      SPRING_DATASOURCE_JNDI_NAME: java:jboss/datasources/AppDS
     volumes:
-      - ./target/demo.war:/opt/jboss/wildfly/standalone/deployments/demo.war:ro
+      - ./target/jdbc-driver/postgresql.jar:/opt/jboss/wildfly/standalone/deployments/postgresql.jar:ro
     depends_on:
       postgres:
         condition: service_healthy
 ```
 
-ポイントは、WildFlyコンテナから見たDBホスト名が`localhost`ではなく、Composeのサービス名`postgres`になること。Spring Bootは上記の環境変数で、既存の`application.yml`の接続設定を上書きする。
+ポイントは次のとおり。
+
+- 管理画面用のポート`9990`を公開し、管理ユーザーを起動時に作成する。
+- PostgreSQL JDBCドライバをWildFlyへデプロイする。
+- Spring BootはURL・ユーザー名・パスワードを直接使わず、WildFly管理のJNDIデータソース`java:jboss/datasources/AppDS`を参照する。
 
 ## 3. PostgreSQLを起動してDDLを流す
 
@@ -119,32 +129,77 @@ docker compose exec postgres \
   -c "SELECT id, title, done FROM todo ORDER BY id;"
 ```
 
-## 4. WARを作成してWildFlyを起動する
+## 4. JDBCドライバを用意してWildFlyを起動する
 
 ```bash
-./mvnw clean package
-test -f target/demo.war
+./mvnw dependency:copy-dependencies \
+  -DincludeArtifactIds=postgresql \
+  -DoutputDirectory=target/jdbc-driver \
+  -Dmdep.stripVersion=true
+test -f target/jdbc-driver/postgresql.jar
 docker compose up -d wildfly
 docker compose logs -f wildfly
 ```
 
-ログに`demo.war`のデプロイ完了が表示されたら、`Ctrl+C`でログ表示だけを終了する。コンテナは停止しない。
+ログにPostgreSQL JDBCドライバのデプロイ完了が表示されたら、`Ctrl+C`でログ表示だけを終了する。コンテナは停止しない。
 
-デプロイ状況も確認できる。
+ドライバのデプロイ状況も確認できる。
 
 ```bash
-ls -l target/demo.war
 docker compose exec wildfly \
   ls -l /opt/jboss/wildfly/standalone/deployments/
 ```
 
-`demo.war.deployed`があればデプロイ成功。`demo.war.failed`がある場合は、次で原因を確認する。
+`postgresql.jar.deployed`があればデプロイ成功。`postgresql.jar.failed`がある場合は、次で原因を確認する。
 
 ```bash
 docker compose logs wildfly
 ```
 
-## 5. Codespacesから動作確認する
+## 5. WildFly管理画面でデータソースを作成する
+
+1. Codespacesの「ポート」タブを開き、ポート`9990`の転送URLを開く。
+2. WildFly管理画面へ次のユーザーでログインする。
+   - ユーザー名: `admin`
+   - パスワード: `CodespaceAdmin_2026!`
+3. `Configuration` → `Subsystems` → `Datasources & Drivers` → `Datasources`を開く。
+4. `Add`からデータソースを追加し、次の値を設定する。
+
+| 項目 | 値 |
+|---|---|
+| Name | `AppDS` |
+| JNDI Name | `java:jboss/datasources/AppDS` |
+| Driver | デプロイ済みのPostgreSQLドライバ |
+| Connection URL | `jdbc:postgresql://postgres:5432/appdb` |
+| User Name | `appuser` |
+| Password | `apppass` |
+
+WildFlyコンテナから見たDBホスト名は`localhost`ではなく、Composeのサービス名`postgres`になる。
+
+設定画面の`Test Connection`を実行し、接続成功になることを確認してから保存・有効化する。
+
+## 6. WARを作成してWildFlyへデプロイする
+
+`clean`を付けると`target/jdbc-driver/postgresql.jar`も削除されるため、ここでは`package`だけを実行する。
+
+```bash
+./mvnw package
+test -f target/demo.war
+docker compose cp target/demo.war \
+  wildfly:/opt/jboss/wildfly/standalone/deployments/demo.war
+docker compose exec wildfly \
+  touch /opt/jboss/wildfly/standalone/deployments/demo.war.dodeploy
+docker compose logs -f wildfly
+```
+
+`demo.war`のデプロイ完了が表示されたら、`Ctrl+C`でログ表示だけを終了する。`demo.war.deployed`が作成されていれば成功。
+
+```bash
+docker compose exec wildfly \
+  ls -l /opt/jboss/wildfly/standalone/deployments/
+```
+
+## 7. Codespacesから動作確認する
 
 ターミナル内では次を実行する。
 
@@ -164,15 +219,18 @@ curl http://localhost:8080/demo/todos
 
 ポートの公開範囲は、動作確認だけなら`Private`のままでよい。
 
-## 6. コード変更後の再デプロイ
+## 8. コード変更後の再デプロイ
 
 ```bash
-./mvnw clean package
-docker compose restart wildfly
+./mvnw package
+docker compose cp target/demo.war \
+  wildfly:/opt/jboss/wildfly/standalone/deployments/demo.war
+docker compose exec wildfly \
+  touch /opt/jboss/wildfly/standalone/deployments/demo.war.dodeploy
 docker compose logs -f wildfly
 ```
 
-## 7. 停止する
+## 9. 停止する
 
 ```bash
 docker compose down
@@ -186,9 +244,10 @@ docker compose down -v
 
 ## 補足
 
-- この構成では、PostgreSQL JDBCドライバとDB接続プールはWARに含まれ、Spring Bootが管理する。WildFly管理画面でデータソースを作成する方式ではない。
+- この構成では、PostgreSQLへの接続情報と接続プールをWildFlyが管理し、アプリはJNDI経由で利用する。
+- `docker compose down`でWildFlyコンテナを削除すると、管理画面で作成したデータソース設定も消える。再起動だけなら`docker compose restart wildfly`を使う。
 - 学習・開発環境向けに分かりやすさを優先し、パスワードをComposeへ直接記載している。本番環境ではSecretsなどへ移す。
-- WildFlyの管理ポート`9990`は、この手順では公開しない。WARは公式コンテナのdeployment scannerを使って配置する。
+- 管理ポート`9990`はCodespacesの「ポート」タブで`Private`のまま使用し、Publicにはしない。
 
 ## 確認に使用した公式資料
 
