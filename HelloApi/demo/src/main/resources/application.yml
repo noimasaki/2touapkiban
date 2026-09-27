@@ -3,11 +3,10 @@ spring:
     name: demo
   
   datasource:
-    jndi-name: java:/jdbc/todoDS
-    # url: jdbc:postgresql://localhost:5432/appdb
-    # username: appuser
-    # password: apppass
-    # driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/appdb
+    username: appuser
+    password: apppass
+    driver-class-name: org.postgresql.Driver
 
 mybatis:
   mapper-locations: classpath*:mapper/*.xml
