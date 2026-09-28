@@ -15,6 +15,7 @@ import java.util.Optional;
 import com.example.demo.domain.Todo;
 import com.example.demo.domain.TodoService;
 import com.example.demo.app.dto.TodoCreateRequest;
+import com.example.demo.app.dto.TodoResponse;
 
 @RestController
 @RequestMapping("/todos")
@@ -25,20 +26,36 @@ public class TodoController{
         this.service = service;
     }
 
+    // @GetMapping
+    // public List<Todo> list() {
+    //     return service.findAll();
+    // }
     @GetMapping
-    public List<Todo> list() {
-        return service.findAll();
+    public List<TodoResponse> list() {
+        return service.findAll()
+                .stream()
+                .map(TodoResponse::from)
+                .toList();
     }
 
     // 指定IDのtodoを取得
+    // @GetMapping("/{id}")
+    // public Optional<Todo> findById(@PathVariable("id") Long id) {
+    //     return service.findById(id);
+    // }
     @GetMapping("/{id}")
-    public Optional<Todo> findById(@PathVariable("id") Long id) {
-        return service.findById(id);
+    public Optional<TodoResponse> findById(@PathVariable("id") Long id) {
+        return service.findById(id).map(TodoResponse::from);
     }
     
+    // @PostMapping
+    // public Todo create(@Valid @RequestBody TodoCreateRequest request) {
+    //     return service.create(request.title());
+    // }
     @PostMapping
-    public Todo create(@Valid @RequestBody TodoCreateRequest request) {
-        return service.create(request.title());
+    public TodoResponse create(@Valid @RequestBody TodoCreateRequest request) {
+        Todo todo = service.create(request.title());
+        return TodoResponse.from(todo);
     }
 
     // public record CreateTodoRequest(String title) {}

@@ -11,4 +11,14 @@
             done
         FROM todo ORDER BY id
     </select>
+
+    <insert id="insert"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO todo (
+            title
+        ) VALUES (
+            #{title}
+        )
+    </insert>
 </mapper>
