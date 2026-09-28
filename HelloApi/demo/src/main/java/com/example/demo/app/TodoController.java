@@ -7,11 +7,14 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
+import jakarta.validation.Valid;
+
 import java.util.List;
 import java.util.Optional;
 
 import com.example.demo.domain.Todo;
 import com.example.demo.domain.TodoService;
+import com.example.demo.app.dto.TodoCreateRequest;
 
 @RestController
 @RequestMapping("/todos")
@@ -34,11 +37,11 @@ public class TodoController{
     }
     
     @PostMapping
-    public Todo create(@RequestBody CreateTodoRequest req) {
-        return service.create(req.title());
+    public Todo create(@Valid @RequestBody TodoCreateRequest request) {
+        return service.create(request.title());
     }
 
-    public record CreateTodoRequest(String title) {}
+    // public record CreateTodoRequest(String title) {}
 
 
     // 指定IDのtodoのdoneを更新
